@@ -32,7 +32,7 @@
         var tempScrollTop,
             currentScrollTop    = $window.scrollTop();
         //if body has navfix class, the scroll will check the 
-        var isAffix           = $('body').hasClass('affix');
+        var useAffix           = options.useAffix || false;
 
         //push menu items to array for section controller
         $menuItem.each(function(){
@@ -50,7 +50,7 @@
             $window.scroll(function () {
                 var offsetCoords        = $self.offset(),
                     sectionOffsetTop    = offsetCoords.top;
-                    if(isAffix){
+                    if(useAffix){
                         offSetTop = $menu.outerHeight();
                     }
                 if ((($window.scrollTop() + offSetTop) >= $self.offset().top) && (($self.offset().top + $self.height() - offSetTop) > $window.scrollTop()) && changeHash) {
