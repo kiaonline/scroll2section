@@ -11,7 +11,7 @@
  *          activeParent:'li'         // parent closest of menu link
  ==================================================*/
 
-(function ( $ ) {
+ (function ( $ ) {
     var scroll2Section = function(el,options){
         var smallScreen = (window.matchMedia('(max-width: 767px)').matches);
         var is_mobile   = (/Android|webOS|iPhone|iPad|BlackBerry|Windows Phone|Opera Mini|IEMobile|Mobile/i.test(navigator.userAgent));
@@ -21,11 +21,13 @@
         //scroll to section
         var $window             = $(window);
         var $section            = $(el);
+        var scrollParent        = options.scrollParent || 'html,body';
         var offSetTop           = options.offsetTop || 0;
         var changeHash          = true;
         var $menu               = $(options.menu),
             $menuItem           = $menu.find("a[data-section]");
         var menuItems           = [];
+        var locked              = false;
 
         var currentHash         = null;
         var scrollPos           = $(document).scrollTop();
@@ -33,11 +35,29 @@
             currentScrollTop    = $window.scrollTop();
         //if body has navfix class, the scroll will check the 
         var useAffix           = options.useAffix || false;
-
+        
         //push menu items to array for section controller
         $menuItem.each(function(){
-            var href = $(this).attr('href').toString().str2Hash().clearHash();
+            var $item   = $(this);
+            var href    = $item.attr('href').toString().str2Hash().clearHash();
             menuItems.push(href);
+            
+
+            $item.click(function(e){
+                
+                changeHash  = false;
+                
+                var $this   = $(this),
+                id      = $this.attr("href").str2Hash().clearHash();
+                
+                if(!id) return true;
+                $this.closest(options.activeParent).addClass(options.activeClass);
+                scrollToAnchor(id);
+                e.preventDefault();
+                return false;
+            });
+
+
         });
 
         function inMenuItems(item){
@@ -53,12 +73,12 @@
                     if(useAffix){
                         offSetTop = $menu.outerHeight();
                     }
-                if ((($window.scrollTop() + offSetTop) >= $self.offset().top) && (($self.offset().top + $self.height() - offSetTop) > $window.scrollTop()) && changeHash) {
+                if (locked === false && (($window.scrollTop() + offSetTop) >= $self.offset().top) && (($self.offset().top + $self.height() - offSetTop) > $window.scrollTop()) && changeHash) {
                     var id          = $self.attr('id');
                     var inMenu      = inMenuItems(id);
                     if(!id.length || currentHash === "#!" + id || !inMenu) return true;
                     currentHash     = "#!" + id;
-                    $('body').trigger('visibleSection',id);
+                    $(scrollParent).trigger('visibleSection',id);
                     activateMenuItem(id);
                     if (window.history && window.history.pushState) {
                         history.pushState("", document.title, currentHash);
@@ -67,49 +87,39 @@
             });
         });
 
-        
-
-        $menuItem.click(function(e){
-            changeHash  = false;
-            
-            var $this   = $(this),
-            id      = $this.attr("href").str2Hash().clearHash();
-            
-            if(!id) return true;
-            $this.closest(options.activeParent).addClass(options.activeClass);
-            activateMenuItem(id);
-            scrollToAnchor(id);
-            e.preventDefault();
-            
-            return false;
-        });
-
         function activateMenuItem(id){
             var active = $menuItem.filter("[href$='#!" + id  + "']");
             $menuItem.not(active).closest(options.activeParent).removeClass(options.activeClass);
             active.closest(options.activeParent).addClass(options.activeClass);
             $menu.trigger('update',active);
-            changeHash = true;
+            changeHash  = true;
+            locked      = false;
         }
 
         function scrollToAnchor(id){
+            var sl              = 1;
             var $target         = $("#"+id);
-            if($target.length > 0) {
+            if($target.length > 0 && locked === false) {
+                locked          = true;
                 var dp          = $target.attr('data-padding') || 0;
                 var dm          = $target.offset().top - parseInt(dp) - offSetTop;
                 changeHash      = false;
                 $('body').addClass('scrolling');
                 // trigger scroll
-                $('html, body').stop().animate({
+                $(scrollParent).stop().animate({
                     'scrollTop': dm
                 }, options.duration, function () {
                     var hash = "#!"  + id;
                     $('body').removeClass('scrolling');
+                    if(sl === $(scrollParent).length){
+                        setTimeout(function(){
+                            activateMenuItem(id);
+                        },100);
+                    }
                     if (window.history && window.history.pushState) {
                         history.pushState("", document.title, hash);
-                        activateMenuItem(id);
-                        changeHash = true;
                     }
+                    sl++;
                 });
             }
         }
@@ -147,7 +157,6 @@
      */
     $.fn.scroll2Section = function(options) {
         options = $.extend( {}, $.fn.scroll2Section.options, options );
-        
         if($(this).hasClass('loaded')) return this;
         return new scroll2Section(this,options);
         
